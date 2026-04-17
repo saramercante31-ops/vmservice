@@ -554,7 +554,7 @@
 
       <div class="toolbar" style="margin-top:18px;">
         <div>
-          <div class="small" id="saveStatus">Dati salvati in locale sul browser</div>
+          <div class="small" id="saveStatus">In attesa di sincronizzazione</div>
           <div class="small" id="clienteSelezionatoInfo" style="margin-top:6px;">Per eliminare un cliente, selezionalo dal titolo nella colonna di destra.</div>
         </div>
         <div style="display:flex; gap:10px; flex-wrap:wrap;">
@@ -651,8 +651,17 @@
       onAuthStateChanged,
       signOut
     } from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js';
-
-    const STORAGE_KEY = 'vm_service_gestionale_data';
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      doc,
+      updateDoc,
+      deleteDoc,
+      onSnapshot,
+      query,
+      orderBy
+    } from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js';
 
     const firebaseConfig = {
       apiKey: "METTI_QUI_LA_TUA_API_KEY",
@@ -665,6 +674,7 @@
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
+    const db = getFirestore(app);
 
     const loginScreen = document.getElementById('loginScreen');
     const appScreen = document.getElementById('appScreen');
@@ -722,6 +732,7 @@
     let macchinaSelezionataId = null;
     let lavoroInModificaId = null;
     let filtroStorico = 'tutti';
+    let unsubscribeMacchine = null;
     let clienteEsistenteSelezionato = '';
     let clienteSelezionatoPerEliminazione = '';
 
@@ -773,20 +784,6 @@
 
     function generaId() {
       return `${Date.now()}_${Math.floor(Math.random() * 100000)}`;
-    }
-
-    function salvaArchivioLocale() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(archivio));
-      saveStatus.textContent = 'Dati salvati in locale sul browser';
-    }
-
-    function caricaArchivioLocale() {
-      try {
-        const dati = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-        archivio = Array.isArray(dati) ? dati : [];
-      } catch (error) {
-        archivio = [];
-      }
     }
 
     function getClientiUniciOrdinati() {
@@ -1111,8 +1108,8 @@
       storicoLavori.innerHTML = html;
 
       storicoLavori.querySelectorAll('.toggle-storico').forEach(el => {
-        el.addEventListener('change', () => {
-          toggleStatoLavoro(el.dataset.macchinaId, el.dataset.id, el.dataset.campo, el.checked);
+        el.addEventListener('change', async () => {
+          await toggleStatoLavoro(el.dataset.macchinaId, el.dataset.id, el.dataset.campo, el.checked);
         });
       });
 
@@ -1121,7 +1118,9 @@
       });
 
       storicoLavori.querySelectorAll('.lavoro-elimina').forEach(el => {
-        el.addEventListener('click', () => eliminaLavoro(el.dataset.macchinaId, el.dataset.id));
+        el.addEventListener('click', async () => {
+          await eliminaLavoro(el.dataset.macchinaId, el.dataset.id);
+        });
       });
     }
 
@@ -1132,7 +1131,34 @@
       renderStorico();
       renderClientiSimili();
       aggiornaPulsanteEliminaCliente();
-      salvaArchivioLocale();
+    }
+
+    async function salvaMacchinaFirestore(macchinaId, patch) {
+      await updateDoc(doc(db, 'macchine', macchinaId), patch);
+    }
+
+    function avviaSyncRealtime() {
+      if (unsubscribeMacchine) unsubscribeMacchine();
+
+      const q = query(collection(db, 'macchine'), orderBy('ragioneSociale'));
+
+      unsubscribeMacchine = onSnapshot(q, (snapshot) => {
+        archivio = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        if (macchinaSelezionataId && !archivio.some(item => item.id === macchinaSelezionataId)) {
+          macchinaSelezionataId = null;
+        }
+
+        if (clienteSelezionatoPerEliminazione && !archivio.some(item => item.ragioneSociale === clienteSelezionatoPerEliminazione)) {
+          clienteSelezionatoPerEliminazione = '';
+        }
+
+        renderTutto();
+        saveStatus.textContent = 'Dati sincronizzati con Firebase';
+      }, (error) => {
+        console.error(error);
+        saveStatus.textContent = 'Errore di connessione a Firebase';
+      });
     }
 
     function selezionaMacchina(id) {
@@ -1163,31 +1189,30 @@
       renderTutto();
     }
 
-    function eliminaLavoro(macchinaId, idLavoro) {
+    async function eliminaLavoro(macchinaId, idLavoro) {
       const macchina = archivio.find(item => item.id === macchinaId);
       if (!macchina) return;
 
       const conferma = confirm('Vuoi eliminare questo lavoro?');
       if (!conferma) return;
 
-      macchina.lavori = (macchina.lavori || []).filter(item => item.id !== idLavoro);
+      const lavoriAggiornati = (macchina.lavori || []).filter(item => item.id !== idLavoro);
+      await salvaMacchinaFirestore(macchina.id, { lavori: lavoriAggiornati });
 
       if (lavoroInModificaId === idLavoro) {
         pulisciFormLavoro();
       }
-
-      renderTutto();
     }
 
-    function toggleStatoLavoro(macchinaId, idLavoro, campo, valore) {
+    async function toggleStatoLavoro(macchinaId, idLavoro, campo, valore) {
       const macchina = archivio.find(item => item.id === macchinaId);
       if (!macchina) return;
 
-      macchina.lavori = (macchina.lavori || []).map(item =>
+      const lavoriAggiornati = (macchina.lavori || []).map(item =>
         item.id === idLavoro ? { ...item, [campo]: valore } : item
       );
 
-      renderTutto();
+      await salvaMacchinaFirestore(macchina.id, { lavori: lavoriAggiornati });
     }
 
     function apriModalEliminaCliente() {
@@ -1213,7 +1238,7 @@
       confirmDeleteClienteModal.classList.add('hidden');
     }
 
-    function eliminaClienteConMacchine() {
+    async function eliminaClienteConMacchine() {
       if (!clienteSelezionatoPerEliminazione) {
         chiudiModalEliminaCliente();
         alert('Seleziona prima un cliente dalla colonna di destra');
@@ -1229,19 +1254,27 @@
         return;
       }
 
-      archivio = archivio.filter(item => item.ragioneSociale !== nomeCliente);
+      try {
+        for (const macchina of macchineCliente) {
+          await deleteDoc(doc(db, 'macchine', macchina.id));
+        }
 
-      chiudiModalEliminaCliente();
+        chiudiModalEliminaCliente();
 
-      ricercaCorrente = '';
-      ricercaCliente.value = '';
-      macchinaSelezionataId = null;
-      lavoroInModificaId = null;
-      clienteSelezionatoPerEliminazione = '';
-      pulisciFormLavoro();
-      renderTutto();
+        ricercaCorrente = '';
+        ricercaCliente.value = '';
+        macchinaSelezionataId = null;
+        lavoroInModificaId = null;
+        clienteSelezionatoPerEliminazione = '';
+        pulisciFormLavoro();
+        renderTutto();
 
-      alert('Cliente e mezzi associati eliminati correttamente');
+        alert('Cliente e mezzi associati eliminati correttamente');
+      } catch (error) {
+        console.error(error);
+        chiudiModalEliminaCliente();
+        alert('Errore durante l’eliminazione del cliente');
+      }
     }
 
     function esportaPdf(filtroTipo, titoloFiltro) {
@@ -1306,7 +1339,7 @@
       loginScreen.classList.add('hidden');
       appScreen.classList.remove('hidden');
       utenteLoggato.textContent = `Accesso: ${email}`;
-      saveStatus.textContent = 'Dati salvati in locale sul browser';
+      saveStatus.textContent = 'Dati sincronizzati con Firebase';
       renderTutto();
     }
 
@@ -1316,6 +1349,7 @@
       utenteLoggato.textContent = 'Utente non rilevato';
       loginEmail.value = '';
       loginPassword.value = '';
+      loginMessage.innerHTML = '';
     }
 
     loginBtn.addEventListener('click', async function() {
@@ -1340,7 +1374,7 @@
       await signOut(auth);
     });
 
-    aggiungiClienteMacchinaBtn.addEventListener('click', function() {
+    aggiungiClienteMacchinaBtn.addEventListener('click', async function() {
       const ragioneSocialeInput = nuovaRagioneSociale.value.trim();
       const ragioneSociale = clienteEsistenteSelezionato || ragioneSocialeInput;
       const modello = nuovoModello.value.trim();
@@ -1351,8 +1385,7 @@
         return;
       }
 
-      archivio.push({
-        id: generaId(),
+      await addDoc(collection(db, 'macchine'), {
         ragioneSociale,
         modello,
         noteMacchina,
@@ -1363,7 +1396,6 @@
       ricercaCliente.value = ragioneSociale;
       clienteSelezionatoPerEliminazione = ragioneSociale;
       pulisciFormClienteMacchina();
-      renderTutto();
     });
 
     pulisciClienteMacchinaBtn.addEventListener('click', function() {
@@ -1400,7 +1432,7 @@
       renderTutto();
     });
 
-    salvaLavoroBtn.addEventListener('click', function() {
+    salvaLavoroBtn.addEventListener('click', async function() {
       const macchina = getMacchinaSelezionata();
 
       if (!macchina) {
@@ -1440,9 +1472,8 @@
         });
       }
 
-      macchina.lavori = lavoriAggiornati;
+      await salvaMacchinaFirestore(macchina.id, { lavori: lavoriAggiornati });
       pulisciFormLavoro();
-      renderTutto();
     });
 
     annullaModificaBtn.addEventListener('click', function() {
@@ -1500,8 +1531,8 @@
 
     onAuthStateChanged(auth, (user) => {
       if (user) {
-        caricaArchivioLocale();
         mostraApp(user.email);
+        avviaSyncRealtime();
       } else {
         archivio = [];
         ricercaCorrente = '';
@@ -1520,6 +1551,12 @@
         statMacchine.textContent = '0';
         statLavori.textContent = '0';
         chiudiModalEliminaCliente();
+
+        if (unsubscribeMacchine) {
+          unsubscribeMacchine();
+          unsubscribeMacchine = null;
+        }
+
         mostraLogin();
       }
     });
