@@ -664,13 +664,13 @@
     } from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js';
 
     const firebaseConfig = {
-      apiKey: "AIzaSyDKbohB692OQAJLnM2iV9H3hhXc-cg9BQo",
-      authDomain: "vmservice-3cd6d.firebaseapp.com",
-      projectId: "vmservice-3cd6d",
-      storageBucket: "vmservice-3cd6d.firebasestorage.app",
-      messagingSenderId: "711480668547",
-      appId: "1:711480668547:web:902fb8ddee10e5822ec6b6"
-    };
+  apiKey: "AIzaSyDKbohB692OQAJLnM2iV9H3hhXc-cg9BQo",
+  authDomain: "vmservice-3cd6d.firebaseapp.com",
+  projectId: "vmservice-3cd6d",
+  storageBucket: "vmservice-3cd6d.firebasestorage.app",
+  messagingSenderId: "711480668547",
+  appId: "1:711480668547:web:902fb8ddee10e5822ec6b6"
+};
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
@@ -1353,22 +1353,22 @@
     }
 
     loginBtn.addEventListener('click', async function() {
-      const email = loginEmail.value.trim();
-      const password = loginPassword.value;
+  const email = loginEmail.value.trim();
+  const password = loginPassword.value;
 
-      if (!email || !password) {
-        mostraLoginErrore('Inserisci email e password');
-        return;
-      }
+  if (!email || !password) {
+    mostraLoginErrore('Inserisci email e password');
+    return;
+  }
 
-      try {
-        await signInWithEmailAndPassword(auth, email, password);
-        mostraLoginSuccesso('Accesso effettuato');
-      } catch (error) {
-        console.error(error);
-        mostraLoginErrore('Email o password non corretti');
-      }
-    });
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    mostraLoginSuccesso('Accesso effettuato');
+  } catch (error) {
+    console.error("ERRORE FIREBASE:", error);
+    mostraLoginErrore(`Errore: ${error.code}`);
+  }
+});
 
     logoutBtn.addEventListener('click', async function() {
       await signOut(auth);
