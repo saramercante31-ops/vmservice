@@ -1,0 +1,1503 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VM Service</title>
+  <style>
+    :root {
+      --bg: #f3f4f6;
+      --card: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --dark: #111827;
+      --light: #f9fafb;
+      --blue-soft: #eef2ff;
+      --red: #dc2626;
+      --green: #059669;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 28px;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 12px 30px rgba(0,0,0,.08);
+      margin-bottom: 22px;
+    }
+
+    h1,h2,h3 {
+      margin-top: 0;
+      margin-bottom: 10px;
+    }
+
+    p {
+      margin-top: 0;
+      color: var(--muted);
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    input, textarea, button, select {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid #d1d5db;
+      border-radius: 12px;
+      font-size: 15px;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    button {
+      border: none;
+      cursor: pointer;
+      font-weight: 700;
+      transition: .2s;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      opacity: .96;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: .6;
+      transform: none;
+    }
+
+    .btn-dark { background: var(--dark); color: #fff; }
+    .btn-gray { background: #e5e7eb; color: var(--dark); }
+    .btn-red { background: var(--red); color: #fff; }
+    .btn-green { background: var(--green); color: #fff; }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 22px;
+      margin-top: 18px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 14px;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: 180px 1fr 180px 180px;
+      gap: 14px;
+      align-items: end;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    .stat-box {
+      background: var(--light);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .lista {
+      background: var(--light);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      min-height: 160px;
+    }
+
+    .cliente-trovato {
+      font-weight: 700;
+      margin: 12px 0 10px;
+      font-size: 16px;
+    }
+
+    .cliente-trovato:first-child {
+      margin-top: 0;
+    }
+
+    .cliente-trovato.selezionabile {
+      cursor: pointer;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      transition: .2s;
+    }
+
+    .cliente-trovato.selezionabile:hover {
+      background: #fff;
+      border-color: #cbd5e1;
+    }
+
+    .cliente-trovato.selezionata {
+      background: var(--blue-soft);
+      border-color: var(--dark);
+    }
+
+    .macchina {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 10px;
+      cursor: pointer;
+    }
+
+    .macchina:hover {
+      border-color: #9ca3af;
+    }
+
+    .macchina.selezionata {
+      border: 2px solid var(--dark);
+      background: var(--blue-soft);
+    }
+
+    .info-box {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--light);
+      margin-bottom: 20px;
+    }
+
+    .small {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .empty {
+      color: var(--muted);
+    }
+
+    .toggle-group {
+      background: var(--light);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .check-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .check-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .check-row input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      margin: 0;
+    }
+
+    .storico-item {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 15px;
+      margin-bottom: 12px;
+    }
+
+    .storico-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+      align-items: flex-start;
+    }
+
+    .storico-buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .mini-btn {
+      width: auto;
+      padding: 8px 10px;
+      border-radius: 10px;
+      font-size: 13px;
+    }
+
+    .badge {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      margin-right: 8px;
+      margin-top: 8px;
+    }
+
+    .badge.ok {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .badge.no {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .toolbar-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: end;
+    }
+
+    .toolbar-row > div {
+      min-width: 170px;
+      flex: 1;
+    }
+
+    .toolbar-row button {
+      width: auto;
+      min-width: 170px;
+    }
+
+    .login-wrap {
+      min-height: calc(100vh - 56px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 460px;
+      background: var(--card);
+      border-radius: 20px;
+      padding: 28px;
+      box-shadow: 0 18px 40px rgba(0,0,0,.10);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .error-box {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+      font-size: 14px;
+    }
+
+    .success-box {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: #d1fae5;
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+      font-size: 14px;
+    }
+
+    .cliente-match-box {
+      margin-top: 16px;
+      background: var(--light);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    .cliente-match-title {
+      font-weight: 700;
+      font-size: 15px;
+      margin-bottom: 8px;
+    }
+
+    .cliente-match-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .cliente-match-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .cliente-match-item button {
+      width: auto;
+      min-width: 130px;
+      flex-shrink: 0;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(17, 24, 39, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 9999;
+    }
+
+    .modal-box {
+      width: 100%;
+      max-width: 520px;
+      background: #ffffff;
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 20px 45px rgba(0,0,0,.18);
+    }
+
+    .modal-box h3 {
+      margin-top: 0;
+      margin-bottom: 10px;
+    }
+
+    .modal-box p {
+      margin-bottom: 18px;
+      color: var(--text);
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .modal-actions button {
+      width: auto;
+      min-width: 120px;
+    }
+
+    @media (max-width: 1024px) {
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 960px) {
+      .grid-2, .grid-3, .grid-4 {
+        grid-template-columns: 1fr;
+      }
+
+      .storico-top {
+        flex-direction: column;
+      }
+
+      .toolbar-row > div, .toolbar-row button {
+        width: 100%;
+        min-width: 100%;
+      }
+
+      .cliente-match-item {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+  <div id="loginScreen" class="login-wrap">
+    <div class="login-card">
+      <h1>VM Service</h1>
+      <p>Accedi per usare il gestionale.</p>
+
+      <div>
+        <label for="loginEmail">Email</label>
+        <input type="email" id="loginEmail" placeholder="Es. admin@vmservice.it" />
+      </div>
+
+      <div style="margin-top:14px;">
+        <label for="loginPassword">Password</label>
+        <input type="password" id="loginPassword" placeholder="Inserisci password" />
+      </div>
+
+      <div style="margin-top:16px;">
+        <button class="btn-dark" id="loginBtn">Accedi</button>
+      </div>
+
+      <div id="loginMessage"></div>
+
+      <div class="small" style="margin-top:14px;">
+        Credenziali demo: <strong>admin@vmservice.it</strong> / <strong>admin123</strong>
+      </div>
+    </div>
+  </div>
+
+  <div class="container hidden" id="appScreen">
+    <div class="card">
+      <div class="toolbar">
+        <div>
+          <h1 style="margin-bottom:4px;">VM Service</h1>
+          <p style="margin-bottom:0;">Gestionale protetto con accesso.</p>
+        </div>
+        <div style="text-align:right;">
+          <div class="small" id="utenteLoggato">Utente non rilevato</div>
+          <button class="btn-red" id="logoutBtn" style="width:auto; margin-top:10px;">Esci</button>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-label">Clienti totali</div>
+          <div class="stat-value" id="statClienti">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Macchine totali</div>
+          <div class="stat-value" id="statMacchine">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Lavori totali</div>
+          <div class="stat-value" id="statLavori">0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Aggiungi cliente e macchina</h2>
+      <div class="grid-3">
+        <div>
+          <label for="nuovaRagioneSociale">Ragione sociale</label>
+          <input type="text" id="nuovaRagioneSociale" placeholder="Es. Azienda Rossi" />
+        </div>
+        <div>
+          <label for="nuovoModello">Modello macchina</label>
+          <input type="text" id="nuovoModello" placeholder="Es. Escavatore CAT" />
+        </div>
+        <div>
+          <label for="nuoveNoteMacchina">Note macchina</label>
+          <textarea id="nuoveNoteMacchina" placeholder="Eventuali note sulla macchina..."></textarea>
+        </div>
+      </div>
+
+      <div class="grid-3" style="margin-top:14px;">
+        <div></div>
+        <div><button class="btn-green" id="aggiungiClienteMacchinaBtn">Aggiungi cliente/macchina</button></div>
+        <div><button class="btn-gray" id="pulisciClienteMacchinaBtn">Pulisci campi</button></div>
+      </div>
+
+      <div class="cliente-match-box" id="clienteMatchBox">
+        <div class="cliente-match-title">Controllo clienti già presenti</div>
+        <div class="small" id="clienteMatchMessage">Scrivi la ragione sociale per controllare se il cliente è già presente.</div>
+        <div class="cliente-match-list" id="clienteMatchList"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="grid-2">
+        <div>
+          <label for="ricercaCliente">Cerca cliente</label>
+          <input type="text" id="ricercaCliente" placeholder="Scrivi ragione sociale..." />
+          <div class="small" style="margin-top:8px;">La lista macchine compare solo quando cerchi un cliente.</div>
+        </div>
+
+        <div>
+          <label>Macchine del cliente</label>
+          <div class="lista" id="listaMacchine">Nessun cliente selezionato</div>
+        </div>
+      </div>
+
+      <div class="toolbar" style="margin-top:18px;">
+        <div>
+          <div class="small" id="saveStatus">Dati salvati in locale sul browser</div>
+          <div class="small" id="clienteSelezionatoInfo" style="margin-top:6px;">Per eliminare un cliente, selezionalo dal titolo nella colonna di destra.</div>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn-gray" style="width:auto;" id="resetVistaBtn">Pulisci ricerca</button>
+          <button class="btn-red" style="width:auto;" id="eliminaClienteBtn" disabled>Elimina cliente</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Macchina selezionata</h2>
+      <div class="info-box" id="infoMacchinaSelezionata">Vista generale attiva: lo storico sotto mostra i lavori di tutti i clienti.</div>
+
+      <h3 style="margin-top:22px;">Aggiungi o modifica lavoro</h3>
+      <div class="grid-4">
+        <div>
+          <label for="dataLavoro">Data</label>
+          <input type="date" id="dataLavoro" />
+        </div>
+
+        <div>
+          <label for="descrizioneLavoro">Descrizione</label>
+          <textarea id="descrizioneLavoro" placeholder="Descrizione del lavoro svolto..."></textarea>
+        </div>
+
+        <div class="toggle-group">
+          <label style="margin-bottom:10px;">Stato fattura</label>
+          <div class="check-row">
+            <input type="checkbox" id="fatturatoLavoro" />
+            <span>Fatturato</span>
+          </div>
+          <div class="check-row">
+            <input type="checkbox" id="pagatoLavoro" />
+            <span>Pagato</span>
+          </div>
+        </div>
+
+        <div>
+          <button class="btn-dark" id="salvaLavoroBtn">Salva lavoro</button>
+          <button class="btn-gray" id="annullaModificaBtn" style="margin-top:12px;">Annulla modifica</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Storico lavori</h2>
+
+      <div class="toolbar-row" style="margin-bottom:14px;">
+        <button class="btn-gray" id="filtroTuttiBtn">Tutti</button>
+        <button class="btn-gray" id="filtroNonFatturatiBtn">Non fatturati</button>
+        <button class="btn-gray" id="filtroDaIncassareBtn">Fatturati non pagati</button>
+        <button class="btn-gray" id="filtroPagatiBtn">Pagati</button>
+      </div>
+
+      <div class="toolbar-row" style="margin-bottom:14px;">
+        <div>
+          <label for="dataDaFiltro">Data da</label>
+          <input type="date" id="dataDaFiltro" />
+        </div>
+        <div>
+          <label for="dataAFiltro">Data a</label>
+          <input type="date" id="dataAFiltro" />
+        </div>
+        <button class="btn-gray" id="resetDateBtn">Pulisci date</button>
+      </div>
+
+      <div class="toolbar-row" style="margin-bottom:14px;">
+        <button class="btn-dark" id="pdfTuttiBtn">PDF Tutti</button>
+        <button class="btn-dark" id="pdfNonFatturatiBtn">PDF Non fatturati</button>
+        <button class="btn-dark" id="pdfDaIncassareBtn">PDF Fatturati non pagati</button>
+        <button class="btn-dark" id="pdfPagatiBtn">PDF Pagati</button>
+      </div>
+
+      <div id="storicoLavori" class="lista">Nessun lavoro trovato</div>
+    </div>
+  </div>
+
+  <div id="confirmDeleteClienteModal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <h3>Conferma eliminazione</h3>
+      <p id="confirmDeleteClienteText">Sei sicuro di eliminare cliente e tutti i mezzi a lui associati?</p>
+      <div class="modal-actions">
+        <button class="btn-gray" id="annullaEliminaClienteBtn">No</button>
+        <button class="btn-red" id="confermaEliminaClienteBtn">Sì</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'vm_service_gestionale_data';
+    const SESSION_KEY = 'vm_service_logged_user';
+
+    const DEMO_USER = {
+      email: 'admin@vmservice.it',
+      password: 'admin123'
+    };
+
+    const loginScreen = document.getElementById('loginScreen');
+    const appScreen = document.getElementById('appScreen');
+    const loginEmail = document.getElementById('loginEmail');
+    const loginPassword = document.getElementById('loginPassword');
+    const loginBtn = document.getElementById('loginBtn');
+    const loginMessage = document.getElementById('loginMessage');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const utenteLoggato = document.getElementById('utenteLoggato');
+
+    const saveStatus = document.getElementById('saveStatus');
+    const clienteSelezionatoInfo = document.getElementById('clienteSelezionatoInfo');
+    const nuovaRagioneSociale = document.getElementById('nuovaRagioneSociale');
+    const nuovoModello = document.getElementById('nuovoModello');
+    const nuoveNoteMacchina = document.getElementById('nuoveNoteMacchina');
+    const aggiungiClienteMacchinaBtn = document.getElementById('aggiungiClienteMacchinaBtn');
+    const pulisciClienteMacchinaBtn = document.getElementById('pulisciClienteMacchinaBtn');
+
+    const clienteMatchMessage = document.getElementById('clienteMatchMessage');
+    const clienteMatchList = document.getElementById('clienteMatchList');
+    const ricercaCliente = document.getElementById('ricercaCliente');
+    const listaMacchine = document.getElementById('listaMacchine');
+    const infoMacchinaSelezionata = document.getElementById('infoMacchinaSelezionata');
+    const storicoLavori = document.getElementById('storicoLavori');
+    const resetVistaBtn = document.getElementById('resetVistaBtn');
+    const eliminaClienteBtn = document.getElementById('eliminaClienteBtn');
+    const dataLavoro = document.getElementById('dataLavoro');
+    const descrizioneLavoro = document.getElementById('descrizioneLavoro');
+    const fatturatoLavoro = document.getElementById('fatturatoLavoro');
+    const pagatoLavoro = document.getElementById('pagatoLavoro');
+    const salvaLavoroBtn = document.getElementById('salvaLavoroBtn');
+    const annullaModificaBtn = document.getElementById('annullaModificaBtn');
+    const statClienti = document.getElementById('statClienti');
+    const statMacchine = document.getElementById('statMacchine');
+    const statLavori = document.getElementById('statLavori');
+    const filtroTuttiBtn = document.getElementById('filtroTuttiBtn');
+    const filtroNonFatturatiBtn = document.getElementById('filtroNonFatturatiBtn');
+    const filtroDaIncassareBtn = document.getElementById('filtroDaIncassareBtn');
+    const filtroPagatiBtn = document.getElementById('filtroPagatiBtn');
+    const dataDaFiltro = document.getElementById('dataDaFiltro');
+    const dataAFiltro = document.getElementById('dataAFiltro');
+    const resetDateBtn = document.getElementById('resetDateBtn');
+    const pdfTuttiBtn = document.getElementById('pdfTuttiBtn');
+    const pdfNonFatturatiBtn = document.getElementById('pdfNonFatturatiBtn');
+    const pdfDaIncassareBtn = document.getElementById('pdfDaIncassareBtn');
+    const pdfPagatiBtn = document.getElementById('pdfPagatiBtn');
+
+    const confirmDeleteClienteModal = document.getElementById('confirmDeleteClienteModal');
+    const confirmDeleteClienteText = document.getElementById('confirmDeleteClienteText');
+    const annullaEliminaClienteBtn = document.getElementById('annullaEliminaClienteBtn');
+    const confermaEliminaClienteBtn = document.getElementById('confermaEliminaClienteBtn');
+
+    let archivio = [];
+    let ricercaCorrente = '';
+    let macchinaSelezionataId = null;
+    let lavoroInModificaId = null;
+    let filtroStorico = 'tutti';
+    let clienteEsistenteSelezionato = '';
+    let clienteSelezionatoPerEliminazione = '';
+
+    function mostraLoginErrore(testo) {
+      loginMessage.innerHTML = `<div class="error-box">${testo}</div>`;
+    }
+
+    function mostraLoginSuccesso(testo) {
+      loginMessage.innerHTML = `<div class="success-box">${testo}</div>`;
+    }
+
+    function escapeHtml(text) {
+      return String(text || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function formattaData(dataISO) {
+      if (!dataISO) return '-';
+      const [anno, mese, giorno] = dataISO.split('-');
+      return `${giorno}/${mese}/${anno}`;
+    }
+
+    function normalizzaTesto(testo) {
+      return String(testo || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function paroleSimili(nomeA, nomeB) {
+      const a = normalizzaTesto(nomeA);
+      const b = normalizzaTesto(nomeB);
+
+      if (!a || !b) return false;
+      if (a === b) return true;
+      if (a.includes(b) || b.includes(a)) return true;
+
+      const paroleA = a.split(' ').filter(Boolean);
+      const paroleB = b.split(' ').filter(Boolean);
+
+      return paroleA.some(parola => parola.length > 2 && paroleB.includes(parola));
+    }
+
+    function generaId() {
+      return `${Date.now()}_${Math.floor(Math.random() * 100000)}`;
+    }
+
+    function salvaArchivioLocale() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(archivio));
+      saveStatus.textContent = 'Dati salvati in locale sul browser';
+    }
+
+    function caricaArchivioLocale() {
+      try {
+        const dati = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        archivio = Array.isArray(dati) ? dati : [];
+      } catch (error) {
+        archivio = [];
+      }
+    }
+
+    function getClientiUniciOrdinati() {
+      return [...new Set(archivio.map(item => item.ragioneSociale))]
+        .sort((a, b) => a.localeCompare(b, 'it', { sensitivity: 'base' }));
+    }
+
+    function aggiornaPulsanteEliminaCliente() {
+      const clienteEsiste = clienteSelezionatoPerEliminazione && archivio.some(
+        item => item.ragioneSociale === clienteSelezionatoPerEliminazione
+      );
+
+      eliminaClienteBtn.disabled = !clienteEsiste;
+
+      if (clienteEsiste) {
+        clienteSelezionatoInfo.innerHTML = `Cliente selezionato per eliminazione: <strong>${escapeHtml(clienteSelezionatoPerEliminazione)}</strong>`;
+      } else {
+        clienteSelezionatoInfo.textContent = 'Per eliminare un cliente, selezionalo dal titolo nella colonna di destra.';
+      }
+    }
+
+    function renderClientiSimili() {
+      const valore = nuovaRagioneSociale.value;
+      const testo = normalizzaTesto(valore);
+
+      clienteMatchList.innerHTML = '';
+
+      if (!testo) {
+        clienteEsistenteSelezionato = '';
+        clienteMatchMessage.textContent = 'Scrivi la ragione sociale per controllare se il cliente è già presente.';
+        return;
+      }
+
+      const clientiSimili = getClientiUniciOrdinati()
+        .filter(cliente => paroleSimili(cliente, valore))
+        .slice(0, 8);
+
+      if (!clientiSimili.length) {
+        clienteEsistenteSelezionato = '';
+        clienteMatchMessage.textContent = 'Nessun cliente simile trovato. Verrà creato un nuovo cliente.';
+        return;
+      }
+
+      const esatto = clientiSimili.some(cliente => normalizzaTesto(cliente) === testo);
+
+      if (esatto && !clienteEsistenteSelezionato) {
+        clienteEsistenteSelezionato = clientiSimili.find(cliente => normalizzaTesto(cliente) === testo) || '';
+      }
+
+      if (clienteEsistenteSelezionato && !clientiSimili.includes(clienteEsistenteSelezionato)) {
+        clienteEsistenteSelezionato = '';
+      }
+
+      if (clienteEsistenteSelezionato) {
+        clienteMatchMessage.innerHTML = `Cliente selezionato: <strong>${escapeHtml(clienteEsistenteSelezionato)}</strong>. La macchina verrà associata a questo nominativo.`;
+      } else {
+        clienteMatchMessage.textContent = 'Attenzione: esistono già clienti simili. Puoi selezionarne uno per evitare duplicati.';
+      }
+
+      clienteMatchList.innerHTML = clientiSimili.map(cliente => `
+        <div class="cliente-match-item">
+          <div>
+            <strong>${escapeHtml(cliente)}</strong>
+            <div class="small">${normalizzaTesto(cliente) === testo ? 'Corrispondenza quasi esatta rilevata' : 'Nome simile già presente nel gestionale'}</div>
+          </div>
+          <button
+            type="button"
+            class="${clienteEsistenteSelezionato === cliente ? 'btn-dark' : 'btn-gray'} seleziona-cliente-esistente"
+            data-cliente="${escapeHtml(cliente)}"
+          >
+            ${clienteEsistenteSelezionato === cliente ? 'Selezionato' : 'Usa questo'}
+          </button>
+        </div>
+      `).join('');
+
+      clienteMatchList.querySelectorAll('.seleziona-cliente-esistente').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const cliente = btn.dataset.cliente;
+          clienteEsistenteSelezionato = cliente;
+          nuovaRagioneSociale.value = cliente;
+          renderClientiSimili();
+        });
+      });
+    }
+
+    function pulisciFormClienteMacchina() {
+      nuovaRagioneSociale.value = '';
+      nuovoModello.value = '';
+      nuoveNoteMacchina.value = '';
+      clienteEsistenteSelezionato = '';
+      renderClientiSimili();
+    }
+
+    function pulisciFormLavoro() {
+      dataLavoro.value = '';
+      descrizioneLavoro.value = '';
+      fatturatoLavoro.checked = false;
+      pagatoLavoro.checked = false;
+      lavoroInModificaId = null;
+      salvaLavoroBtn.textContent = 'Salva lavoro';
+    }
+
+    function getMacchinaSelezionata() {
+      return archivio.find(item => item.id === macchinaSelezionataId);
+    }
+
+    function renderStatistiche() {
+      const clientiUnici = [...new Set(archivio.map(item => item.ragioneSociale))].length;
+      const macchineTotali = archivio.length;
+      const lavoriTotali = archivio.reduce((sum, item) => sum + (item.lavori ? item.lavori.length : 0), 0);
+
+      statClienti.textContent = clientiUnici;
+      statMacchine.textContent = macchineTotali;
+      statLavori.textContent = lavoriTotali;
+    }
+
+    function renderListaMacchine() {
+      const testo = ricercaCorrente.toLowerCase().trim();
+
+      if (!testo) {
+        listaMacchine.innerHTML = 'Nessun cliente selezionato';
+        return;
+      }
+
+      const risultati = archivio.filter(item =>
+        item.ragioneSociale.toLowerCase().includes(testo)
+      );
+
+      if (risultati.length === 0) {
+        listaMacchine.innerHTML = 'Cliente non trovato';
+        return;
+      }
+
+      const clientiPresenti = [...new Set(risultati.map(item => item.ragioneSociale))];
+
+      if (clienteSelezionatoPerEliminazione && !clientiPresenti.includes(clienteSelezionatoPerEliminazione)) {
+        clienteSelezionatoPerEliminazione = '';
+      }
+
+      let html = '';
+      let clienteCorrente = null;
+
+      risultati.forEach(item => {
+        if (item.ragioneSociale !== clienteCorrente) {
+          clienteCorrente = item.ragioneSociale;
+          const classeCliente = clienteSelezionatoPerEliminazione === clienteCorrente
+            ? 'cliente-trovato selezionabile selezionata'
+            : 'cliente-trovato selezionabile';
+
+          html += `
+            <div class="${classeCliente}" data-cliente-select="${escapeHtml(clienteCorrente)}">
+              ${escapeHtml(clienteCorrente)}
+            </div>
+          `;
+        }
+
+        const classe = item.id === macchinaSelezionataId ? 'macchina selezionata' : 'macchina';
+        html += `
+          <div class="${classe}" data-id="${item.id}">
+            <div><strong>${escapeHtml(item.modello)}</strong></div>
+            <div class="small">Note: ${escapeHtml(item.noteMacchina || '-')}</div>
+          </div>
+        `;
+      });
+
+      listaMacchine.innerHTML = html;
+
+      listaMacchine.querySelectorAll('.macchina').forEach(el => {
+        el.addEventListener('click', () => selezionaMacchina(el.dataset.id));
+      });
+
+      listaMacchine.querySelectorAll('[data-cliente-select]').forEach(el => {
+        el.addEventListener('click', () => {
+          clienteSelezionatoPerEliminazione = el.dataset.clienteSelect;
+          macchinaSelezionataId = null;
+          pulisciFormLavoro();
+          renderTutto();
+        });
+      });
+    }
+
+    function renderInfoMacchina() {
+      const macchina = getMacchinaSelezionata();
+
+      if (!macchina) {
+        if (ricercaCorrente.trim()) {
+          if (clienteSelezionatoPerEliminazione) {
+            infoMacchinaSelezionata.innerHTML = `
+              <div><strong>Cliente selezionato:</strong> ${escapeHtml(clienteSelezionatoPerEliminazione)}</div>
+              <div class="small" style="margin-top:10px;">Puoi eliminarlo con il pulsante rosso oppure selezionare una macchina per vedere i dettagli specifici.</div>
+            `;
+          } else {
+            infoMacchinaSelezionata.innerHTML = 'Seleziona una macchina del cliente per vedere i dettagli specifici.';
+          }
+        } else {
+          infoMacchinaSelezionata.innerHTML = 'Vista generale attiva: lo storico sotto mostra i lavori di tutti i clienti.';
+        }
+        return;
+      }
+
+      infoMacchinaSelezionata.innerHTML = `
+        <div><strong>Ragione sociale:</strong> ${escapeHtml(macchina.ragioneSociale)}</div>
+        <div><strong>Modello:</strong> ${escapeHtml(macchina.modello)}</div>
+        <div><strong>Note macchina:</strong> ${escapeHtml(macchina.noteMacchina || '-')}</div>
+        <div class="small" style="margin-top:10px;">Lavori registrati: ${(macchina.lavori || []).length}</div>
+      `;
+    }
+
+    function aggiornaBottoniFiltro() {
+      filtroTuttiBtn.className = filtroStorico === 'tutti' ? 'btn-dark' : 'btn-gray';
+      filtroNonFatturatiBtn.className = filtroStorico === 'non_fatturati' ? 'btn-dark' : 'btn-gray';
+      filtroDaIncassareBtn.className = filtroStorico === 'da_incassare' ? 'btn-dark' : 'btn-gray';
+      filtroPagatiBtn.className = filtroStorico === 'pagati' ? 'btn-dark' : 'btn-gray';
+    }
+
+    function lavoroNelRangeDate(lavoro) {
+      const haDataDa = !!dataDaFiltro.value;
+      const haDataA = !!dataAFiltro.value;
+
+      if (!haDataDa && !haDataA) return true;
+      if (!lavoro.data) return false;
+      if (haDataDa && lavoro.data < dataDaFiltro.value) return false;
+      if (haDataA && lavoro.data > dataAFiltro.value) return false;
+
+      return true;
+    }
+
+    function raccogliLavori(filtroTipo = filtroStorico) {
+      let lavori = [];
+      const macchina = getMacchinaSelezionata();
+
+      if (macchina) {
+        lavori = (macchina.lavori || []).map(lavoro => ({
+          ...lavoro,
+          macchinaId: macchina.id,
+          cliente: macchina.ragioneSociale,
+          modello: macchina.modello
+        }));
+      } else if (ricercaCorrente.trim()) {
+        const macchineCliente = archivio.filter(item =>
+          item.ragioneSociale.toLowerCase().includes(ricercaCorrente.toLowerCase().trim())
+        );
+
+        macchineCliente.forEach(item => {
+          (item.lavori || []).forEach(lavoro => {
+            lavori.push({
+              ...lavoro,
+              macchinaId: item.id,
+              cliente: item.ragioneSociale,
+              modello: item.modello
+            });
+          });
+        });
+      } else {
+        archivio.forEach(item => {
+          (item.lavori || []).forEach(lavoro => {
+            lavori.push({
+              ...lavoro,
+              macchinaId: item.id,
+              cliente: item.ragioneSociale,
+              modello: item.modello
+            });
+          });
+        });
+      }
+
+      return lavori
+        .filter(lavoro => {
+          if (filtroTipo === 'non_fatturati') return !lavoro.fatturato;
+          if (filtroTipo === 'da_incassare') return lavoro.fatturato && !lavoro.pagato;
+          if (filtroTipo === 'pagati') return lavoro.pagato;
+          return true;
+        })
+        .filter(lavoroNelRangeDate)
+        .sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+    }
+
+    function renderStorico() {
+      aggiornaBottoniFiltro();
+
+      const lavoriFiltrati = raccogliLavori();
+
+      if (lavoriFiltrati.length === 0) {
+        storicoLavori.innerHTML = '<div class="empty">Nessun lavoro trovato</div>';
+        return;
+      }
+
+      let html = '';
+
+      lavoriFiltrati.forEach(lavoro => {
+        html += `
+          <div class="storico-item">
+            <div class="storico-top">
+              <div>
+                <div><strong>${formattaData(lavoro.data)}</strong></div>
+                <div>${escapeHtml(lavoro.descrizione)}</div>
+                <div class="small" style="margin-top:6px;">${escapeHtml(lavoro.cliente)} - ${escapeHtml(lavoro.modello)}</div>
+                <div style="margin-top:10px; display:flex; gap:18px; flex-wrap:wrap; align-items:center;">
+                  <label style="display:flex; align-items:center; gap:8px; margin:0; font-weight:600;">
+                    <input type="checkbox" ${lavoro.fatturato ? 'checked' : ''} data-id="${lavoro.id}" data-macchina-id="${lavoro.macchinaId}" data-campo="fatturato" class="toggle-storico" style="width:18px; height:18px;" />
+                    <span>Fatturato</span>
+                  </label>
+                  <label style="display:flex; align-items:center; gap:8px; margin:0; font-weight:600;">
+                    <input type="checkbox" ${lavoro.pagato ? 'checked' : ''} data-id="${lavoro.id}" data-macchina-id="${lavoro.macchinaId}" data-campo="pagato" class="toggle-storico" style="width:18px; height:18px;" />
+                    <span>Pagato</span>
+                  </label>
+                </div>
+                <div>
+                  <span class="badge ${lavoro.fatturato ? 'ok' : 'no'}">${lavoro.fatturato ? 'Fatturato: Sì' : 'Fatturato: No'}</span>
+                  <span class="badge ${lavoro.pagato ? 'ok' : 'no'}">${lavoro.pagato ? 'Pagato: Sì' : 'Pagato: No'}</span>
+                </div>
+              </div>
+              <div class="storico-buttons">
+                <button class="mini-btn btn-gray lavoro-modifica" data-id="${lavoro.id}" data-macchina-id="${lavoro.macchinaId}">Modifica</button>
+                <button class="mini-btn btn-red lavoro-elimina" data-id="${lavoro.id}" data-macchina-id="${lavoro.macchinaId}">Elimina</button>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+
+      storicoLavori.innerHTML = html;
+
+      storicoLavori.querySelectorAll('.toggle-storico').forEach(el => {
+        el.addEventListener('change', () => {
+          toggleStatoLavoro(el.dataset.macchinaId, el.dataset.id, el.dataset.campo, el.checked);
+        });
+      });
+
+      storicoLavori.querySelectorAll('.lavoro-modifica').forEach(el => {
+        el.addEventListener('click', () => modificaLavoro(el.dataset.macchinaId, el.dataset.id));
+      });
+
+      storicoLavori.querySelectorAll('.lavoro-elimina').forEach(el => {
+        el.addEventListener('click', () => eliminaLavoro(el.dataset.macchinaId, el.dataset.id));
+      });
+    }
+
+    function renderTutto() {
+      renderStatistiche();
+      renderListaMacchine();
+      renderInfoMacchina();
+      renderStorico();
+      renderClientiSimili();
+      aggiornaPulsanteEliminaCliente();
+      salvaArchivioLocale();
+    }
+
+    function selezionaMacchina(id) {
+      macchinaSelezionataId = id;
+      const macchina = getMacchinaSelezionata();
+      if (macchina) {
+        clienteSelezionatoPerEliminazione = macchina.ragioneSociale;
+      }
+      pulisciFormLavoro();
+      renderTutto();
+    }
+
+    function modificaLavoro(macchinaId, idLavoro) {
+      const macchina = archivio.find(item => item.id === macchinaId);
+      if (!macchina) return;
+
+      const lavoro = (macchina.lavori || []).find(item => item.id === idLavoro);
+      if (!lavoro) return;
+
+      macchinaSelezionataId = macchinaId;
+      clienteSelezionatoPerEliminazione = macchina.ragioneSociale;
+      lavoroInModificaId = idLavoro;
+      dataLavoro.value = lavoro.data;
+      descrizioneLavoro.value = lavoro.descrizione;
+      fatturatoLavoro.checked = Boolean(lavoro.fatturato);
+      pagatoLavoro.checked = Boolean(lavoro.pagato);
+      salvaLavoroBtn.textContent = 'Aggiorna lavoro';
+      renderTutto();
+    }
+
+    function eliminaLavoro(macchinaId, idLavoro) {
+      const macchina = archivio.find(item => item.id === macchinaId);
+      if (!macchina) return;
+
+      const conferma = confirm('Vuoi eliminare questo lavoro?');
+      if (!conferma) return;
+
+      macchina.lavori = (macchina.lavori || []).filter(item => item.id !== idLavoro);
+
+      if (lavoroInModificaId === idLavoro) {
+        pulisciFormLavoro();
+      }
+
+      renderTutto();
+    }
+
+    function toggleStatoLavoro(macchinaId, idLavoro, campo, valore) {
+      const macchina = archivio.find(item => item.id === macchinaId);
+      if (!macchina) return;
+
+      macchina.lavori = (macchina.lavori || []).map(item =>
+        item.id === idLavoro ? { ...item, [campo]: valore } : item
+      );
+
+      renderTutto();
+    }
+
+    function apriModalEliminaCliente() {
+      if (!clienteSelezionatoPerEliminazione) {
+        alert('Seleziona prima un cliente dalla colonna di destra');
+        return;
+      }
+
+      const macchineCliente = archivio.filter(item =>
+        item.ragioneSociale === clienteSelezionatoPerEliminazione
+      );
+
+      if (macchineCliente.length === 0) {
+        alert('Cliente non trovato');
+        return;
+      }
+
+      confirmDeleteClienteText.innerHTML = `Sei sicuro di eliminare il cliente <strong>${escapeHtml(clienteSelezionatoPerEliminazione)}</strong> e tutti i mezzi a lui associati?`;
+      confirmDeleteClienteModal.classList.remove('hidden');
+    }
+
+    function chiudiModalEliminaCliente() {
+      confirmDeleteClienteModal.classList.add('hidden');
+    }
+
+    function eliminaClienteConMacchine() {
+      if (!clienteSelezionatoPerEliminazione) {
+        chiudiModalEliminaCliente();
+        alert('Seleziona prima un cliente dalla colonna di destra');
+        return;
+      }
+
+      const nomeCliente = clienteSelezionatoPerEliminazione;
+      const macchineCliente = archivio.filter(item => item.ragioneSociale === nomeCliente);
+
+      if (macchineCliente.length === 0) {
+        chiudiModalEliminaCliente();
+        alert('Cliente non trovato');
+        return;
+      }
+
+      archivio = archivio.filter(item => item.ragioneSociale !== nomeCliente);
+
+      chiudiModalEliminaCliente();
+
+      ricercaCorrente = '';
+      ricercaCliente.value = '';
+      macchinaSelezionataId = null;
+      lavoroInModificaId = null;
+      clienteSelezionatoPerEliminazione = '';
+      pulisciFormLavoro();
+      renderTutto();
+
+      alert('Cliente e mezzi associati eliminati correttamente');
+    }
+
+    function esportaPdf(filtroTipo, titoloFiltro) {
+      const { jsPDF } = window.jspdf;
+      const lavori = raccogliLavori(filtroTipo);
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+      let y = 15;
+      const pageHeight = 285;
+      const marginLeft = 12;
+      const maxWidth = 185;
+
+      function nuovaPaginaSeServe(spazio = 20) {
+        if (y + spazio > pageHeight) {
+          pdf.addPage();
+          y = 15;
+        }
+      }
+
+      pdf.setFontSize(16);
+      pdf.text('VM Service', marginLeft, y);
+      y += 8;
+
+      pdf.setFontSize(12);
+      pdf.text(`Estrazione PDF - ${titoloFiltro}`, marginLeft, y);
+      y += 7;
+
+      const periodoDa = dataDaFiltro.value ? formattaData(dataDaFiltro.value) : 'tutto';
+      const periodoA = dataAFiltro.value ? formattaData(dataAFiltro.value) : 'tutto';
+      pdf.text(`Periodo: ${periodoDa} - ${periodoA}`, marginLeft, y);
+      y += 10;
+
+      if (lavori.length === 0) {
+        pdf.setFontSize(11);
+        pdf.text('Nessun lavoro trovato con i filtri selezionati.', marginLeft, y);
+        pdf.save(`vm-service-${titoloFiltro.toLowerCase().replace(/\s+/g, '-')}.pdf`);
+        return;
+      }
+
+      lavori.forEach((lavoro, index) => {
+        nuovaPaginaSeServe(35);
+        pdf.setFontSize(11);
+        pdf.text(`${index + 1}. ${formattaData(lavoro.data)} - ${lavoro.cliente} - ${lavoro.modello}`, marginLeft, y);
+        y += 7;
+
+        const righeDescrizione = pdf.splitTextToSize(`Descrizione: ${lavoro.descrizione || '-'}`, maxWidth);
+        pdf.text(righeDescrizione, marginLeft, y);
+        y += righeDescrizione.length * 5;
+
+        pdf.text(`Fatturato: ${lavoro.fatturato ? 'Sì' : 'No'} | Pagato: ${lavoro.pagato ? 'Sì' : 'No'}`, marginLeft, y);
+        y += 9;
+
+        pdf.setDrawColor(220, 220, 220);
+        pdf.line(marginLeft, y - 3, 198, y - 3);
+        y += 2;
+      });
+
+      pdf.save(`vm-service-${titoloFiltro.toLowerCase().replace(/\s+/g, '-')}.pdf`);
+    }
+
+    function mostraApp(email) {
+      loginScreen.classList.add('hidden');
+      appScreen.classList.remove('hidden');
+      utenteLoggato.textContent = `Accesso: ${email}`;
+      saveStatus.textContent = 'Dati salvati in locale sul browser';
+      renderTutto();
+    }
+
+    function mostraLogin() {
+      loginScreen.classList.remove('hidden');
+      appScreen.classList.add('hidden');
+      utenteLoggato.textContent = 'Utente non rilevato';
+      loginEmail.value = '';
+      loginPassword.value = '';
+      loginMessage.innerHTML = '';
+    }
+
+    loginBtn.addEventListener('click', function() {
+      const email = loginEmail.value.trim();
+      const password = loginPassword.value;
+
+      if (!email || !password) {
+        mostraLoginErrore('Inserisci email e password');
+        return;
+      }
+
+      if (email === DEMO_USER.email && password === DEMO_USER.password) {
+        sessionStorage.setItem(SESSION_KEY, email);
+        mostraLoginSuccesso('Accesso effettuato');
+        mostraApp(email);
+      } else {
+        mostraLoginErrore('Email o password non corretti');
+      }
+    });
+
+    logoutBtn.addEventListener('click', function() {
+      sessionStorage.removeItem(SESSION_KEY);
+      mostraLogin();
+    });
+
+    aggiungiClienteMacchinaBtn.addEventListener('click', function() {
+      const ragioneSocialeInput = nuovaRagioneSociale.value.trim();
+      const ragioneSociale = clienteEsistenteSelezionato || ragioneSocialeInput;
+      const modello = nuovoModello.value.trim();
+      const noteMacchina = nuoveNoteMacchina.value.trim();
+
+      if (!ragioneSociale || !modello) {
+        alert('Inserisci ragione sociale e modello macchina');
+        return;
+      }
+
+      archivio.push({
+        id: generaId(),
+        ragioneSociale,
+        modello,
+        noteMacchina,
+        lavori: []
+      });
+
+      ricercaCorrente = ragioneSociale;
+      ricercaCliente.value = ragioneSociale;
+      clienteSelezionatoPerEliminazione = ragioneSociale;
+      pulisciFormClienteMacchina();
+      renderTutto();
+    });
+
+    pulisciClienteMacchinaBtn.addEventListener('click', function() {
+      pulisciFormClienteMacchina();
+    });
+
+    nuovaRagioneSociale.addEventListener('input', function() {
+      const valoreNormalizzato = normalizzaTesto(this.value);
+
+      if (clienteEsistenteSelezionato && normalizzaTesto(clienteEsistenteSelezionato) !== valoreNormalizzato) {
+        clienteEsistenteSelezionato = '';
+      }
+
+      renderClientiSimili();
+    });
+
+    resetVistaBtn.addEventListener('click', function() {
+      ricercaCorrente = '';
+      macchinaSelezionataId = null;
+      filtroStorico = 'tutti';
+      clienteSelezionatoPerEliminazione = '';
+      ricercaCliente.value = '';
+      dataDaFiltro.value = '';
+      dataAFiltro.value = '';
+      pulisciFormLavoro();
+      renderTutto();
+    });
+
+    ricercaCliente.addEventListener('input', function() {
+      ricercaCorrente = this.value;
+      macchinaSelezionataId = null;
+      clienteSelezionatoPerEliminazione = '';
+      pulisciFormLavoro();
+      renderTutto();
+    });
+
+    salvaLavoroBtn.addEventListener('click', function() {
+      const macchina = getMacchinaSelezionata();
+
+      if (!macchina) {
+        alert('Seleziona prima una macchina');
+        return;
+      }
+
+      const data = dataLavoro.value;
+      const descrizione = descrizioneLavoro.value.trim();
+
+      if (!data || !descrizione) {
+        alert('Inserisci data e descrizione');
+        return;
+      }
+
+      let lavoriAggiornati = Array.isArray(macchina.lavori) ? [...macchina.lavori] : [];
+
+      if (lavoroInModificaId) {
+        lavoriAggiornati = lavoriAggiornati.map(item =>
+          item.id === lavoroInModificaId
+            ? {
+                ...item,
+                data,
+                descrizione,
+                fatturato: fatturatoLavoro.checked,
+                pagato: pagatoLavoro.checked
+              }
+            : item
+        );
+      } else {
+        lavoriAggiornati.push({
+          id: generaId(),
+          data,
+          descrizione,
+          fatturato: fatturatoLavoro.checked,
+          pagato: pagatoLavoro.checked
+        });
+      }
+
+      macchina.lavori = lavoriAggiornati;
+      pulisciFormLavoro();
+      renderTutto();
+    });
+
+    annullaModificaBtn.addEventListener('click', function() {
+      pulisciFormLavoro();
+    });
+
+    eliminaClienteBtn.addEventListener('click', apriModalEliminaCliente);
+    annullaEliminaClienteBtn.addEventListener('click', chiudiModalEliminaCliente);
+    confermaEliminaClienteBtn.addEventListener('click', eliminaClienteConMacchine);
+
+    filtroTuttiBtn.addEventListener('click', function() {
+      filtroStorico = 'tutti';
+      renderStorico();
+    });
+
+    filtroNonFatturatiBtn.addEventListener('click', function() {
+      filtroStorico = 'non_fatturati';
+      renderStorico();
+    });
+
+    filtroDaIncassareBtn.addEventListener('click', function() {
+      filtroStorico = 'da_incassare';
+      renderStorico();
+    });
+
+    filtroPagatiBtn.addEventListener('click', function() {
+      filtroStorico = 'pagati';
+      renderStorico();
+    });
+
+    dataDaFiltro.addEventListener('change', renderStorico);
+    dataAFiltro.addEventListener('change', renderStorico);
+
+    resetDateBtn.addEventListener('click', function() {
+      dataDaFiltro.value = '';
+      dataAFiltro.value = '';
+      renderStorico();
+    });
+
+    pdfTuttiBtn.addEventListener('click', function() {
+      esportaPdf('tutti', 'Tutti');
+    });
+
+    pdfNonFatturatiBtn.addEventListener('click', function() {
+      esportaPdf('non_fatturati', 'Non fatturati');
+    });
+
+    pdfDaIncassareBtn.addEventListener('click', function() {
+      esportaPdf('da_incassare', 'Fatturati non pagati');
+    });
+
+    pdfPagatiBtn.addEventListener('click', function() {
+      esportaPdf('pagati', 'Pagati');
+    });
+
+    caricaArchivioLocale();
+
+    const utenteSalvato = sessionStorage.getItem(SESSION_KEY);
+    if (utenteSalvato) {
+      mostraApp(utenteSalvato);
+    } else {
+      mostraLogin();
+    }
+  </script>
+</body>
+</html>
