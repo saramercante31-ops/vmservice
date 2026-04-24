@@ -110,7 +110,7 @@
 
     .grid-4 {
       display: grid;
-      grid-template-columns: 180px 1fr 180px 180px;
+      grid-template-columns: 180px 180px 1fr 180px 180px;
       gap: 14px;
       align-items: end;
     }
@@ -427,6 +427,42 @@
       min-width: 120px;
     }
 
+    .scelta-ricambi {
+      display: flex;
+      gap: 10px;
+      margin-top: 2px;
+    }
+
+    .box-scelta {
+      flex: 1;
+      padding: 14px;
+      text-align: center;
+      border-radius: 12px;
+      border: 2px solid #d1d5db;
+      cursor: pointer;
+      font-weight: 700;
+      transition: .2s;
+      background: #fff;
+      user-select: none;
+    }
+
+    .box-scelta:hover {
+      border-color: #111827;
+      transform: translateY(-1px);
+    }
+
+    .box-scelta.attivo {
+      background: #111827;
+      color: #fff;
+      border-color: #111827;
+    }
+
+    .box-scelta.disabilitato {
+      opacity: .55;
+      cursor: not-allowed;
+      transform: none;
+    }
+
     @media (max-width: 1024px) {
       .stats-grid {
         grid-template-columns: 1fr;
@@ -576,8 +612,29 @@
         </div>
 
         <div>
-          <label for="descrizioneLavoro">Descrizione</label>
-          <textarea id="descrizioneLavoro" placeholder="Descrizione del lavoro svolto..."></textarea>
+          <label for="oreLavoro">Quante ore hai fatto?</label>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <input type="number" id="oreLavoro" placeholder="Es. 3" style="flex:1;" min="0" step="0.5" />
+            <span style="font-weight:700;">ore</span>
+          </div>
+        </div>
+
+        <div>
+          <label>Hai usato ricambi o devi ordinarne qualcuno?</label>
+          <div class="scelta-ricambi" id="sceltaRicambiBox">
+            <div class="box-scelta disabilitato" id="boxRicambiSi" data-valore="si">SÌ</div>
+            <div class="box-scelta disabilitato" id="boxRicambiNo" data-valore="no">NO</div>
+          </div>
+
+          <div id="boxDettaglioRicambi" class="hidden" style="margin-top:12px;">
+            <label for="dettaglioRicambi">Quali ricambi hai usato o devi ordinare?</label>
+            <textarea id="dettaglioRicambi" placeholder="Scrivi qui i ricambi usati o da ordinare..."></textarea>
+          </div>
+
+          <div id="boxDescrizioneLavoro" class="hidden" style="margin-top:12px;">
+            <label for="descrizioneLavoro">Cosa hai fatto</label>
+            <textarea id="descrizioneLavoro" placeholder="Scrivi qui cosa hai fatto per questo cliente e questa macchina..."></textarea>
+          </div>
         </div>
 
         <div class="toggle-group">
@@ -657,6 +714,7 @@
       addDoc,
       doc,
       updateDoc,
+      getDoc,
       deleteDoc,
       onSnapshot,
       query,
@@ -664,13 +722,13 @@
     } from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js';
 
     const firebaseConfig = {
-  apiKey: "AIzaSyDKbohB692OQAJLnM2iV9H3hhXc-cg9BQo",
-  authDomain: "vmservice-3cd6d.firebaseapp.com",
-  projectId: "vmservice-3cd6d",
-  storageBucket: "vmservice-3cd6d.firebasestorage.app",
-  messagingSenderId: "711480668547",
-  appId: "1:711480668547:web:902fb8ddee10e5822ec6b6"
-};
+      apiKey: "AIzaSyDKbohB692OQAJLnM2iV9H3hhXc-cg9BQo",
+      authDomain: "vmservice-3cd6d.firebaseapp.com",
+      projectId: "vmservice-3cd6d",
+      storageBucket: "vmservice-3cd6d.firebasestorage.app",
+      messagingSenderId: "711480668547",
+      appId: "1:711480668547:web:902fb8ddee10e5822ec6b6"
+    };
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
@@ -702,6 +760,12 @@
     const resetVistaBtn = document.getElementById('resetVistaBtn');
     const eliminaClienteBtn = document.getElementById('eliminaClienteBtn');
     const dataLavoro = document.getElementById('dataLavoro');
+    const oreLavoro = document.getElementById('oreLavoro');
+    const boxRicambiSi = document.getElementById('boxRicambiSi');
+    const boxRicambiNo = document.getElementById('boxRicambiNo');
+    const dettaglioRicambi = document.getElementById('dettaglioRicambi');
+    const boxDettaglioRicambi = document.getElementById('boxDettaglioRicambi');
+    const boxDescrizioneLavoro = document.getElementById('boxDescrizioneLavoro');
     const descrizioneLavoro = document.getElementById('descrizioneLavoro');
     const fatturatoLavoro = document.getElementById('fatturatoLavoro');
     const pagatoLavoro = document.getElementById('pagatoLavoro');
@@ -731,10 +795,12 @@
     let ricercaCorrente = '';
     let macchinaSelezionataId = null;
     let lavoroInModificaId = null;
+    let lavoroInModificaIndex = null;
     let filtroStorico = 'tutti';
     let unsubscribeMacchine = null;
     let clienteEsistenteSelezionato = '';
     let clienteSelezionatoPerEliminazione = '';
+    let sceltaRicambi = '';
 
     function mostraLoginErrore(testo) {
       loginMessage.innerHTML = `<div class="error-box">${testo}</div>`;
@@ -877,17 +943,105 @@
       renderClientiSimili();
     }
 
+    function aggiornaStepLavoro() {
+      const dataPresente = !!dataLavoro.value;
+
+      [boxRicambiSi, boxRicambiNo].forEach(box => {
+        box.classList.toggle('disabilitato', !dataPresente);
+      });
+
+      if (!dataPresente) {
+        sceltaRicambi = '';
+        dettaglioRicambi.value = '';
+        descrizioneLavoro.value = '';
+        boxRicambiSi.classList.remove('attivo');
+        boxRicambiNo.classList.remove('attivo');
+        boxDettaglioRicambi.classList.add('hidden');
+        boxDescrizioneLavoro.classList.add('hidden');
+        return;
+      }
+
+      if (!sceltaRicambi) {
+        boxRicambiSi.classList.remove('attivo');
+        boxRicambiNo.classList.remove('attivo');
+        boxDettaglioRicambi.classList.add('hidden');
+        boxDescrizioneLavoro.classList.add('hidden');
+        return;
+      }
+
+      boxRicambiSi.classList.toggle('attivo', sceltaRicambi === 'si');
+      boxRicambiNo.classList.toggle('attivo', sceltaRicambi === 'no');
+
+      if (sceltaRicambi === 'si') {
+        boxDettaglioRicambi.classList.remove('hidden');
+      } else {
+        boxDettaglioRicambi.classList.add('hidden');
+        dettaglioRicambi.value = '';
+      }
+
+      boxDescrizioneLavoro.classList.remove('hidden');
+    }
+
+    function selezionaSceltaRicambi(valore) {
+      if (!dataLavoro.value) {
+        alert('Inserisci prima la data');
+        return;
+      }
+
+      sceltaRicambi = valore;
+      aggiornaStepLavoro();
+    }
+
+    function componiDescrizioneLavoro() {
+      const testoLavoro = descrizioneLavoro.value.trim();
+      const ricambi = dettaglioRicambi.value.trim();
+
+      if (!testoLavoro) return '';
+
+      if (sceltaRicambi === 'si') {
+        return `Ricambi usati/da ordinare: ${ricambi}\n\nCosa hai fatto: ${testoLavoro}`;
+      }
+
+      return `Ricambi usati/da ordinare: Nessuno\n\nCosa hai fatto: ${testoLavoro}`;
+    }
+
+    function leggiDescrizioneSalvata(testo) {
+      const valore = String(testo || '').trim();
+
+      if (!valore) {
+        return { ricambiScelta: '', dettaglioRicambi: '', descrizione: '' };
+      }
+
+      const match = valore.match(/^Ricambi usati\/da ordinare:\s*(.*?)\n\nCosa hai fatto:\s*([\s\S]*)$/);
+
+      if (match) {
+        const dettaglio = (match[1] || '').trim();
+        return {
+          ricambiScelta: dettaglio && dettaglio.toLowerCase() !== 'nessuno' ? 'si' : 'no',
+          dettaglioRicambi: dettaglio && dettaglio.toLowerCase() !== 'nessuno' ? dettaglio : '',
+          descrizione: (match[2] || '').trim()
+        };
+      }
+
+      return { ricambiScelta: '', dettaglioRicambi: '', descrizione: valore };
+    }
+
     function pulisciFormLavoro() {
       dataLavoro.value = '';
+      oreLavoro.value = '';
+      dettaglioRicambi.value = '';
       descrizioneLavoro.value = '';
+      sceltaRicambi = '';
       fatturatoLavoro.checked = false;
       pagatoLavoro.checked = false;
       lavoroInModificaId = null;
+      lavoroInModificaIndex = null;
       salvaLavoroBtn.textContent = 'Salva lavoro';
+      aggiornaStepLavoro();
     }
 
     function getMacchinaSelezionata() {
-      return archivio.find(item => item.id === macchinaSelezionataId);
+      return archivio.find(item => String(item.id) === String(macchinaSelezionataId));
     }
 
     function renderStatistiche() {
@@ -909,7 +1063,7 @@
       }
 
       const risultati = archivio.filter(item =>
-        item.ragioneSociale.toLowerCase().includes(testo)
+        String(item.ragioneSociale || '').toLowerCase().includes(testo)
       );
 
       if (risultati.length === 0) {
@@ -940,9 +1094,9 @@
           `;
         }
 
-        const classe = item.id === macchinaSelezionataId ? 'macchina selezionata' : 'macchina';
+        const classe = String(item.id) === String(macchinaSelezionataId) ? 'macchina selezionata' : 'macchina';
         html += `
-          <div class="${classe}" data-id="${item.id}">
+          <div class="${classe}" data-id="${escapeHtml(item.id)}">
             <div><strong>${escapeHtml(item.modello)}</strong></div>
             <div class="small">Note: ${escapeHtml(item.noteMacchina || '-')}</div>
           </div>
@@ -1015,39 +1169,26 @@
       let lavori = [];
       const macchina = getMacchinaSelezionata();
 
-      if (macchina) {
-        lavori = (macchina.lavori || []).map(lavoro => ({
-          ...lavoro,
-          macchinaId: macchina.id,
-          cliente: macchina.ragioneSociale,
-          modello: macchina.modello
-        }));
-      } else if (ricercaCorrente.trim()) {
-        const macchineCliente = archivio.filter(item =>
-          item.ragioneSociale.toLowerCase().includes(ricercaCorrente.toLowerCase().trim())
-        );
+      function aggiungiLavori(item) {
+        (item.lavori || []).forEach((lavoro, index) => {
+          lavori.push({
+            ...lavoro,
+            lavoroIndex: index,
+            macchinaId: item.id,
+            cliente: item.ragioneSociale,
+            modello: item.modello
+          });
+        });
+      }
 
-        macchineCliente.forEach(item => {
-          (item.lavori || []).forEach(lavoro => {
-            lavori.push({
-              ...lavoro,
-              macchinaId: item.id,
-              cliente: item.ragioneSociale,
-              modello: item.modello
-            });
-          });
-        });
+      if (macchina) {
+        aggiungiLavori(macchina);
+      } else if (ricercaCorrente.trim()) {
+        archivio
+          .filter(item => String(item.ragioneSociale || '').toLowerCase().includes(ricercaCorrente.toLowerCase().trim()))
+          .forEach(aggiungiLavori);
       } else {
-        archivio.forEach(item => {
-          (item.lavori || []).forEach(lavoro => {
-            lavori.push({
-              ...lavoro,
-              macchinaId: item.id,
-              cliente: item.ragioneSociale,
-              modello: item.modello
-            });
-          });
-        });
+        archivio.forEach(aggiungiLavori);
       }
 
       return lavori
@@ -1074,31 +1215,50 @@
       let html = '';
 
       lavoriFiltrati.forEach(lavoro => {
+        const mid = escapeHtml(lavoro.macchinaId);
+        const lid = escapeHtml(lavoro.id || '');
+        const idx = escapeHtml(lavoro.lavoroIndex);
+
         html += `
           <div class="storico-item">
             <div class="storico-top">
               <div>
                 <div><strong>${formattaData(lavoro.data)}</strong></div>
-                <div>${escapeHtml(lavoro.descrizione)}</div>
+                <div class="small" style="margin-top:4px;"><strong>Ore:</strong> ${escapeHtml(lavoro.ore || '0')}</div>
+                <div style="margin-top:6px; white-space:pre-line;">${escapeHtml(lavoro.descrizione)}</div>
                 <div class="small" style="margin-top:6px;">${escapeHtml(lavoro.cliente)} - ${escapeHtml(lavoro.modello)}</div>
+
                 <div style="margin-top:10px; display:flex; gap:18px; flex-wrap:wrap; align-items:center;">
                   <label style="display:flex; align-items:center; gap:8px; margin:0; font-weight:600;">
-                    <input type="checkbox" ${lavoro.fatturato ? 'checked' : ''} data-id="${lavoro.id}" data-macchina-id="${lavoro.macchinaId}" data-campo="fatturato" class="toggle-storico" style="width:18px; height:18px;" />
+                    <input
+                      type="checkbox"
+                      ${lavoro.fatturato ? 'checked' : ''}
+                      onchange="window.toggleStatoLavoro('${mid}', '${lid}', 'fatturato', this.checked, '${idx}')"
+                      style="width:18px; height:18px;"
+                    />
                     <span>Fatturato</span>
                   </label>
+
                   <label style="display:flex; align-items:center; gap:8px; margin:0; font-weight:600;">
-                    <input type="checkbox" ${lavoro.pagato ? 'checked' : ''} data-id="${lavoro.id}" data-macchina-id="${lavoro.macchinaId}" data-campo="pagato" class="toggle-storico" style="width:18px; height:18px;" />
+                    <input
+                      type="checkbox"
+                      ${lavoro.pagato ? 'checked' : ''}
+                      onchange="window.toggleStatoLavoro('${mid}', '${lid}', 'pagato', this.checked, '${idx}')"
+                      style="width:18px; height:18px;"
+                    />
                     <span>Pagato</span>
                   </label>
                 </div>
+
                 <div>
                   <span class="badge ${lavoro.fatturato ? 'ok' : 'no'}">${lavoro.fatturato ? 'Fatturato: Sì' : 'Fatturato: No'}</span>
                   <span class="badge ${lavoro.pagato ? 'ok' : 'no'}">${lavoro.pagato ? 'Pagato: Sì' : 'Pagato: No'}</span>
                 </div>
               </div>
+
               <div class="storico-buttons">
-                <button class="mini-btn btn-gray lavoro-modifica" data-id="${lavoro.id}" data-macchina-id="${lavoro.macchinaId}">Modifica</button>
-                <button class="mini-btn btn-red lavoro-elimina" data-id="${lavoro.id}" data-macchina-id="${lavoro.macchinaId}">Elimina</button>
+                <button class="mini-btn btn-gray" onclick="window.modificaLavoro('${mid}', '${lid}', '${idx}')">Modifica</button>
+                <button class="mini-btn btn-red" onclick="window.eliminaLavoro('${mid}', '${lid}', '${idx}')">Elimina</button>
               </div>
             </div>
           </div>
@@ -1106,22 +1266,6 @@
       });
 
       storicoLavori.innerHTML = html;
-
-      storicoLavori.querySelectorAll('.toggle-storico').forEach(el => {
-        el.addEventListener('change', async () => {
-          await toggleStatoLavoro(el.dataset.macchinaId, el.dataset.id, el.dataset.campo, el.checked);
-        });
-      });
-
-      storicoLavori.querySelectorAll('.lavoro-modifica').forEach(el => {
-        el.addEventListener('click', () => modificaLavoro(el.dataset.macchinaId, el.dataset.id));
-      });
-
-      storicoLavori.querySelectorAll('.lavoro-elimina').forEach(el => {
-        el.addEventListener('click', async () => {
-          await eliminaLavoro(el.dataset.macchinaId, el.dataset.id);
-        });
-      });
     }
 
     function renderTutto() {
@@ -1137,30 +1281,6 @@
       await updateDoc(doc(db, 'macchine', macchinaId), patch);
     }
 
-    function avviaSyncRealtime() {
-      if (unsubscribeMacchine) unsubscribeMacchine();
-
-      const q = query(collection(db, 'macchine'), orderBy('ragioneSociale'));
-
-      unsubscribeMacchine = onSnapshot(q, (snapshot) => {
-        archivio = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-
-        if (macchinaSelezionataId && !archivio.some(item => item.id === macchinaSelezionataId)) {
-          macchinaSelezionataId = null;
-        }
-
-        if (clienteSelezionatoPerEliminazione && !archivio.some(item => item.ragioneSociale === clienteSelezionatoPerEliminazione)) {
-          clienteSelezionatoPerEliminazione = '';
-        }
-
-        renderTutto();
-        saveStatus.textContent = 'Dati sincronizzati con Firebase';
-      }, (error) => {
-        console.error(error);
-        saveStatus.textContent = 'Errore di connessione a Firebase';
-      });
-    }
-
     function selezionaMacchina(id) {
       macchinaSelezionataId = id;
       const macchina = getMacchinaSelezionata();
@@ -1171,46 +1291,130 @@
       renderTutto();
     }
 
-    function modificaLavoro(macchinaId, idLavoro) {
-      const macchina = archivio.find(item => item.id === macchinaId);
+    function modificaLavoro(macchinaId, idLavoro, lavoroIndex = null) {
+      const macchina = archivio.find(item => String(item.id) === String(macchinaId));
       if (!macchina) return;
 
-      const lavoro = (macchina.lavori || []).find(item => item.id === idLavoro);
-      if (!lavoro) return;
+      const lavori = Array.isArray(macchina.lavori) ? macchina.lavori : [];
+      let lavoro = null;
+      let indexTrovato = null;
+
+      if (idLavoro !== '' && idLavoro !== undefined && idLavoro !== null) {
+        indexTrovato = lavori.findIndex(item => String(item.id) === String(idLavoro));
+        if (indexTrovato !== -1) {
+          lavoro = lavori[indexTrovato];
+        }
+      }
+
+      if (!lavoro && lavoroIndex !== null && lavoroIndex !== undefined && lavoroIndex !== '') {
+        const idx = Number(lavoroIndex);
+        if (!Number.isNaN(idx) && idx >= 0 && idx < lavori.length) {
+          lavoro = lavori[idx];
+          indexTrovato = idx;
+        }
+      }
+
+      if (!lavoro) {
+        alert('Lavoro non trovato');
+        return;
+      }
 
       macchinaSelezionataId = macchinaId;
       clienteSelezionatoPerEliminazione = macchina.ragioneSociale;
-      lavoroInModificaId = idLavoro;
-      dataLavoro.value = lavoro.data;
-      descrizioneLavoro.value = lavoro.descrizione;
+      lavoroInModificaId = lavoro.id ?? null;
+      lavoroInModificaIndex = indexTrovato;
+      dataLavoro.value = lavoro.data || '';
+      oreLavoro.value = lavoro.ore || '';
+
+      const datiDescrizione = leggiDescrizioneSalvata(lavoro.descrizione);
+      sceltaRicambi = datiDescrizione.ricambiScelta;
+      dettaglioRicambi.value = datiDescrizione.dettaglioRicambi;
+      descrizioneLavoro.value = datiDescrizione.descrizione;
+
+      aggiornaStepLavoro();
       fatturatoLavoro.checked = Boolean(lavoro.fatturato);
       pagatoLavoro.checked = Boolean(lavoro.pagato);
       salvaLavoroBtn.textContent = 'Aggiorna lavoro';
-      renderTutto();
     }
 
-    async function eliminaLavoro(macchinaId, idLavoro) {
-      const macchina = archivio.find(item => item.id === macchinaId);
-      if (!macchina) return;
+    async function eliminaLavoro(macchinaId, idLavoro, lavoroIndex = null) {
+      try {
+        const macchina = archivio.find(item => String(item.id) === String(macchinaId));
+        if (!macchina) {
+          alert('Macchina non trovata');
+          return;
+        }
 
-      const conferma = confirm('Vuoi eliminare questo lavoro?');
-      if (!conferma) return;
+        const lavoriOriginali = Array.isArray(macchina.lavori) ? [...macchina.lavori] : [];
+        if (lavoriOriginali.length === 0) {
+          alert('Questa macchina non ha lavori salvati');
+          return;
+        }
 
-      const lavoriAggiornati = (macchina.lavori || []).filter(item => item.id !== idLavoro);
-      await salvaMacchinaFirestore(macchina.id, { lavori: lavoriAggiornati });
+        let indexDaEliminare = -1;
 
-      if (lavoroInModificaId === idLavoro) {
-        pulisciFormLavoro();
+        if (lavoroIndex !== null && lavoroIndex !== undefined && String(lavoroIndex).trim() !== '') {
+          const idx = Number(lavoroIndex);
+          if (!Number.isNaN(idx) && idx >= 0 && idx < lavoriOriginali.length) {
+            indexDaEliminare = idx;
+          }
+        }
+
+        if (indexDaEliminare === -1 && idLavoro !== null && idLavoro !== undefined && String(idLavoro).trim() !== '') {
+          indexDaEliminare = lavoriOriginali.findIndex(item => String(item.id) === String(idLavoro));
+        }
+
+        if (indexDaEliminare === -1) {
+          alert('Non sono riuscito a trovare il lavoro da eliminare.');
+          return;
+        }
+
+        const lavoriAggiornati = [...lavoriOriginali];
+        lavoriAggiornati.splice(indexDaEliminare, 1);
+
+        await salvaMacchinaFirestore(macchina.id, { lavori: lavoriAggiornati });
+
+        if (String(lavoroInModificaIndex) === String(lavoroIndex) || String(lavoroInModificaId) === String(idLavoro)) {
+          pulisciFormLavoro();
+        }
+
+        saveStatus.textContent = 'Lavoro eliminato correttamente';
+      } catch (error) {
+        console.error('ERRORE ELIMINAZIONE:', error);
+        alert('Errore durante l’eliminazione: ' + (error.code || error.message));
       }
     }
 
-    async function toggleStatoLavoro(macchinaId, idLavoro, campo, valore) {
-      const macchina = archivio.find(item => item.id === macchinaId);
+    async function toggleStatoLavoro(macchinaId, idLavoro, campo, valore, lavoroIndex = null) {
+      const macchina = archivio.find(item => String(item.id) === String(macchinaId));
       if (!macchina) return;
 
-      const lavoriAggiornati = (macchina.lavori || []).map(item =>
-        item.id === idLavoro ? { ...item, [campo]: valore } : item
-      );
+      const lavoriOriginali = Array.isArray(macchina.lavori) ? [...macchina.lavori] : [];
+      let trovato = false;
+
+      const lavoriAggiornati = lavoriOriginali.map((item, index) => {
+        const matchId =
+          idLavoro !== '' &&
+          idLavoro !== undefined &&
+          idLavoro !== null &&
+          String(item.id) === String(idLavoro);
+
+        const matchIndex =
+          !matchId &&
+          lavoroIndex !== null &&
+          lavoroIndex !== undefined &&
+          lavoroIndex !== '' &&
+          index === Number(lavoroIndex);
+
+        if (matchId || matchIndex) {
+          trovato = true;
+          return { ...item, [campo]: valore };
+        }
+
+        return item;
+      });
+
+      if (!trovato) return;
 
       await salvaMacchinaFirestore(macchina.id, { lavori: lavoriAggiornati });
     }
@@ -1265,6 +1469,7 @@
         ricercaCliente.value = '';
         macchinaSelezionataId = null;
         lavoroInModificaId = null;
+        lavoroInModificaIndex = null;
         clienteSelezionatoPerEliminazione = '';
         pulisciFormLavoro();
         renderTutto();
@@ -1315,10 +1520,13 @@
       }
 
       lavori.forEach((lavoro, index) => {
-        nuovaPaginaSeServe(35);
+        nuovaPaginaSeServe(40);
         pdf.setFontSize(11);
         pdf.text(`${index + 1}. ${formattaData(lavoro.data)} - ${lavoro.cliente} - ${lavoro.modello}`, marginLeft, y);
-        y += 7;
+        y += 6;
+
+        pdf.text(`Ore: ${lavoro.ore || '0'}`, marginLeft, y);
+        y += 6;
 
         const righeDescrizione = pdf.splitTextToSize(`Descrizione: ${lavoro.descrizione || '-'}`, maxWidth);
         pdf.text(righeDescrizione, marginLeft, y);
@@ -1333,6 +1541,30 @@
       });
 
       pdf.save(`vm-service-${titoloFiltro.toLowerCase().replace(/\s+/g, '-')}.pdf`);
+    }
+
+    function avviaSyncRealtime() {
+      if (unsubscribeMacchine) unsubscribeMacchine();
+
+      const q = query(collection(db, 'macchine'), orderBy('ragioneSociale'));
+
+      unsubscribeMacchine = onSnapshot(q, (snapshot) => {
+        archivio = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        if (macchinaSelezionataId && !archivio.some(item => String(item.id) === String(macchinaSelezionataId))) {
+          macchinaSelezionataId = null;
+        }
+
+        if (clienteSelezionatoPerEliminazione && !archivio.some(item => item.ragioneSociale === clienteSelezionatoPerEliminazione)) {
+          clienteSelezionatoPerEliminazione = '';
+        }
+
+        renderTutto();
+        saveStatus.textContent = 'Dati sincronizzati con Firebase';
+      }, (error) => {
+        console.error(error);
+        saveStatus.textContent = 'Errore di connessione a Firebase';
+      });
     }
 
     function mostraApp(email) {
@@ -1353,22 +1585,22 @@
     }
 
     loginBtn.addEventListener('click', async function() {
-  const email = loginEmail.value.trim();
-  const password = loginPassword.value;
+      const email = loginEmail.value.trim();
+      const password = loginPassword.value;
 
-  if (!email || !password) {
-    mostraLoginErrore('Inserisci email e password');
-    return;
-  }
+      if (!email || !password) {
+        mostraLoginErrore('Inserisci email e password');
+        return;
+      }
 
-  try {
-    await signInWithEmailAndPassword(auth, email, password);
-    mostraLoginSuccesso('Accesso effettuato');
-  } catch (error) {
-    console.error("ERRORE FIREBASE:", error);
-    mostraLoginErrore(`Errore: ${error.code}`);
-  }
-});
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        mostraLoginSuccesso('Accesso effettuato');
+      } catch (error) {
+        console.error('ERRORE FIREBASE:', error);
+        mostraLoginErrore(`Errore: ${error.code}`);
+      }
+    });
 
     logoutBtn.addEventListener('click', async function() {
       await signOut(auth);
@@ -1432,6 +1664,10 @@
       renderTutto();
     });
 
+    dataLavoro.addEventListener('change', aggiornaStepLavoro);
+    boxRicambiSi.addEventListener('click', () => selezionaSceltaRicambi('si'));
+    boxRicambiNo.addEventListener('click', () => selezionaSceltaRicambi('no'));
+
     salvaLavoroBtn.addEventListener('click', async function() {
       const macchina = getMacchinaSelezionata();
 
@@ -1441,31 +1677,77 @@
       }
 
       const data = dataLavoro.value;
-      const descrizione = descrizioneLavoro.value.trim();
+      const ore = oreLavoro.value.trim();
+      const descrizioneTesto = descrizioneLavoro.value.trim();
+      const ricambiTesto = dettaglioRicambi.value.trim();
 
-      if (!data || !descrizione) {
-        alert('Inserisci data e descrizione');
+      if (!data) {
+        alert('Inserisci prima la data');
         return;
       }
 
+      if (!ore) {
+        alert('Inserisci quante ore hai fatto');
+        return;
+      }
+
+      if (!sceltaRicambi) {
+        alert('Dopo la data devi indicare se hai usato ricambi o se devi ordinare ricambi');
+        return;
+      }
+
+      if (sceltaRicambi === 'si' && !ricambiTesto) {
+        alert('Hai selezionato sì: scrivi i ricambi usati o da ordinare');
+        return;
+      }
+
+      if (!descrizioneTesto) {
+        alert('Scrivi cosa hai fatto');
+        return;
+      }
+
+      const descrizione = componiDescrizioneLavoro();
       let lavoriAggiornati = Array.isArray(macchina.lavori) ? [...macchina.lavori] : [];
 
-      if (lavoroInModificaId) {
-        lavoriAggiornati = lavoriAggiornati.map(item =>
-          item.id === lavoroInModificaId
-            ? {
-                ...item,
-                data,
-                descrizione,
-                fatturato: fatturatoLavoro.checked,
-                pagato: pagatoLavoro.checked
-              }
-            : item
-        );
+      if (lavoroInModificaId !== null || lavoroInModificaIndex !== null) {
+        let trovato = false;
+
+        lavoriAggiornati = lavoriAggiornati.map((item, index) => {
+          const matchId =
+            lavoroInModificaId !== null &&
+            lavoroInModificaId !== undefined &&
+            String(item.id) === String(lavoroInModificaId);
+
+          const matchIndex =
+            !matchId &&
+            lavoroInModificaIndex !== null &&
+            lavoroInModificaIndex !== undefined &&
+            index === Number(lavoroInModificaIndex);
+
+          if (matchId || matchIndex) {
+            trovato = true;
+            return {
+              ...item,
+              data,
+              ore,
+              descrizione,
+              fatturato: fatturatoLavoro.checked,
+              pagato: pagatoLavoro.checked
+            };
+          }
+
+          return item;
+        });
+
+        if (!trovato) {
+          alert('Non sono riuscito a trovare il lavoro da aggiornare');
+          return;
+        }
       } else {
         lavoriAggiornati.push({
           id: generaId(),
           data,
+          ore,
           descrizione,
           fatturato: fatturatoLavoro.checked,
           pagato: pagatoLavoro.checked
@@ -1538,9 +1820,11 @@
         ricercaCorrente = '';
         macchinaSelezionataId = null;
         lavoroInModificaId = null;
+        lavoroInModificaIndex = null;
         filtroStorico = 'tutti';
         clienteEsistenteSelezionato = '';
         clienteSelezionatoPerEliminazione = '';
+        sceltaRicambi = '';
         ricercaCliente.value = '';
         dataDaFiltro.value = '';
         dataAFiltro.value = '';
@@ -1560,6 +1844,12 @@
         mostraLogin();
       }
     });
+
+    window.modificaLavoro = modificaLavoro;
+    window.eliminaLavoro = eliminaLavoro;
+    window.toggleStatoLavoro = toggleStatoLavoro;
+
+    aggiornaStepLavoro();
   </script>
 </body>
 </html>
